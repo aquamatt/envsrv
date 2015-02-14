@@ -1,4 +1,5 @@
 from __future__ import division
+from datetime import datetime
 import json
 import serial
 import time
@@ -18,6 +19,7 @@ LIBRATO_TOKEN = 'PUT IN SETTINGS'
 GECKO_URL_ROOT = "https://push.geckoboard.com/v1/send/"
 GECKO_API_KEY = "PUT IN SETTINGS"
 GECKO_POWER_KEY = "PUT IN SETTINGS"
+GECKO_CHART_KEY = "PUT IN SETTINGS"
 
 from settings import *
 
@@ -42,18 +44,28 @@ def make_gecko_number_secondary_stat(value, text=''):
         )
 
     v = json.dumps(dict(api_key=GECKO_API_KEY, data=d))
-    logger.info(v)
+    return v
+
+
+def make_gecko_line_chart(data, title=''):
+    d = dict(
+        x_axis=dict(type="datetime"),
+        series=[dict(name=title, data=data)],
+        )
+    v = json.dumps(dict(api_key=GECKO_API_KEY, data=d))
     return v
 
 
 class PowerAccumulator(threading.Thread):
-    def __init__(self, reporting_interval=60):
+    def __init__(self, reporting_interval=60, history_points=100):
         super(PowerAccumulator, self).__init__()
         self.daemon = True
         self.dt_millis = 0
         self.intervals = 0
         self.reporting_interval = reporting_interval
         self.publish_queue = Queue()
+        self.history_points = history_points
+        self.history = []
 
     def add(self, dt):
         self.dt_millis += dt
@@ -62,15 +74,30 @@ class PowerAccumulator(threading.Thread):
 
     def check(self):
         if self.dt_millis/1000 >= self.reporting_interval:
-            self.publish_queue.put(1000*(3600*self.intervals) / self.dt_millis)
+            power = 1000*(3600*self.intervals) / self.dt_millis
             self.dt_millis = 0
             self.intervals = 0
+
+            self.publish_queue.put(power)
+            self.history.append([datetime.now().isoformat().split('.')[0], power])
+            self.history = self.history[-self.history_points:]
 
     def run(self):
         while True:
             p = self.publish_queue.get()
-            content = make_gecko_meter(p, 0, 4500)
-            requests.post(GECKO_URL_ROOT + GECKO_POWER_KEY, content)
+            meter_content = make_gecko_meter(p, 0, 4500)
+            try:
+                requests.post(GECKO_URL_ROOT + GECKO_POWER_KEY, meter_content)
+            except Exception:
+                pass
+            chart_content = make_gecko_line_chart(
+                data=self.history,
+                title="Power consumption")
+            try:
+                requests.post(GECKO_URL_ROOT + GECKO_CHART_KEY, chart_content)
+            except Exception:
+                pass
+  
 
 power_accumulator = PowerAccumulator(reporting_interval=5)
 power_accumulator.start()
