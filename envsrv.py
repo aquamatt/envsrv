@@ -99,27 +99,28 @@ class PowerAccumulator(threading.Thread):
                 pass
   
 
-power_accumulator = PowerAccumulator(reporting_interval=5)
+power_accumulator = PowerAccumulator(reporting_interval=5, history_points=300)
 power_accumulator.start()
 
-OUTFILE = "/mnt/energy_ticker"
-COMPUTED_TIME = 0
+OUTFILE = "/mnt/energy_ticker.csv"
 
-def log(computed, delta):
-    with open("/mnt/energy_ticker", "at") as output:
-        output.write("{},{},{}\n".format(time.time(), computed, delta))
+def log(delta):
+    with open(OUTFILE, "at") as output:
+        output.write("{},{},{}\n".format(datetime.now().isoformat(),
+                                         time.time(),
+                                         delta))
     
 def process(v):
-    global COMPUTED_TIME
-    key, value = v.split("=")
-    if key == "I":
-        if COMPUTED_TIME == 0:
-            COMPUTED_TIME = time.time()
-        else:
-	    COMPUTED_TIME += int(value)/1000.0
-        log(COMPUTED_TIME, value)
-        power_accumulator.add(int(value))
-    
+    try:
+        key, value = v.split("=")
+        if key == "I":
+            log(value)
+            power_accumulator.add(int(value))
+    except ValueError:
+        # likely that we couldn't unpack two values in the split because
+        # programme started mid way between transmission from the uC
+        pass
+ 
 
 DEVICE = "/dev/ttyAMA0"
 ser = serial.Serial(DEVICE, 38400)
