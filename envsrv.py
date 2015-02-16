@@ -4,7 +4,6 @@ import json
 import serial
 import time
 import threading
-import sys
 
 import librato
 import requests
@@ -14,6 +13,7 @@ from Queue import Queue
 # Librato setup
 LIBRATO_USER = 'PUT IN SETTINGS'
 LIBRATO_TOKEN = 'PUT IN SETTINGS'
+librato = librato.connect(LIBRATO_USER, LIBRATO_TOKEN)
 
 # Geckoboard setup
 GECKO_URL_ROOT = "https://push.geckoboard.com/v1/send/"
@@ -24,6 +24,7 @@ GECKO_CHART_KEY = "PUT IN SETTINGS"
 from settings import *
 
 librato = librato.connect(LIBRATO_USER, LIBRATO_TOKEN)
+
 
 def make_gecko_meter(value, minimum, maximum):
     d = dict(
@@ -79,13 +80,16 @@ class PowerAccumulator(threading.Thread):
             self.intervals = 0
 
             self.publish_queue.put(power)
-            self.history.append([datetime.now().isoformat().split('.')[0], power])
+            self.history.append([datetime.now().isoformat().split('.')[0],
+                                 power])
             self.history = self.history[-self.history_points:]
 
     def run(self):
         while True:
-            p = self.publish_queue.get()
-            meter_content = make_gecko_meter(p, 0, 4500)
+            power = self.publish_queue.get()
+
+            # Geckoboard
+            meter_content = make_gecko_meter(power, 0, 4500)
             try:
                 requests.post(GECKO_URL_ROOT + GECKO_POWER_KEY, meter_content)
             except Exception:
@@ -97,19 +101,41 @@ class PowerAccumulator(threading.Thread):
                 requests.post(GECKO_URL_ROOT + GECKO_CHART_KEY, chart_content)
             except Exception:
                 pass
-  
+
+            # Librato
+            try:
+                with librato.new_queue() as queue:
+#                   queue.add("room_temperature",
+#                             temperature,
+#                             source="home",
+#                             description="Room temperature")
+#                   queue.add("pressure",
+#                             pressure,
+#                             source="home",
+#                             description="Atmospheric pressure")
+                    queue.add("home_electricity_watts",
+                              power,
+                              source="home",
+                              description="Domestic electricity consumption")
+                    queue.submit()
+            except Exception, ex:
+                logger.error(str(ex))
+
 
 power_accumulator = PowerAccumulator(reporting_interval=5, history_points=300)
 power_accumulator.start()
 
+
 OUTFILE = "/mnt/energy_ticker.csv"
+
 
 def log(delta):
     with open(OUTFILE, "at") as output:
         output.write("{},{},{}\n".format(datetime.now().isoformat(),
                                          time.time(),
                                          delta))
-    
+
+
 def process(v):
     try:
         key, value = v.split("=")
@@ -120,17 +146,17 @@ def process(v):
         # likely that we couldn't unpack two values in the split because
         # programme started mid way between transmission from the uC
         pass
- 
+
 
 DEVICE = "/dev/ttyAMA0"
 ser = serial.Serial(DEVICE, 38400)
 ser.open()
-v=""
+v = ""
 while 1:
     ch = ser.read()
     if ch == "\n":
         process(v)
-        v=""
+        v = ""
     elif ch == "\r":
         pass
     else:
