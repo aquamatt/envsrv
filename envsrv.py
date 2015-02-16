@@ -13,7 +13,6 @@ from Queue import Queue
 # Librato setup
 LIBRATO_USER = 'PUT IN SETTINGS'
 LIBRATO_TOKEN = 'PUT IN SETTINGS'
-librato = librato.connect(LIBRATO_USER, LIBRATO_TOKEN)
 
 # Geckoboard setup
 GECKO_URL_ROOT = "https://push.geckoboard.com/v1/send/"
