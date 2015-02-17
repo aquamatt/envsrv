@@ -118,7 +118,7 @@ class PowerAccumulator(threading.Thread):
                               description="Domestic electricity consumption")
                     queue.submit()
             except Exception, ex:
-                logger.error(str(ex))
+                pass
 
 
 power_accumulator = PowerAccumulator(reporting_interval=5, history_points=300)
