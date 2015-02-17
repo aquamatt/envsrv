@@ -74,14 +74,15 @@ class PowerAccumulator(threading.Thread):
 
     def check(self):
         if self.dt_millis/1000 >= self.reporting_interval:
-            power = 1000*(3600*self.intervals) / self.dt_millis
+            power = (3600000*self.intervals) / self.dt_millis
             self.dt_millis = 0
             self.intervals = 0
 
-            self.publish_queue.put(power)
             self.history.append([datetime.now().isoformat().split('.')[0],
                                  power])
             self.history = self.history[-self.history_points:]
+
+            self.publish_queue.put(power)
 
     def run(self):
         while True:
@@ -104,14 +105,6 @@ class PowerAccumulator(threading.Thread):
             # Librato
             try:
                 with librato.new_queue() as queue:
-#                   queue.add("room_temperature",
-#                             temperature,
-#                             source="home",
-#                             description="Room temperature")
-#                   queue.add("pressure",
-#                             pressure,
-#                             source="home",
-#                             description="Atmospheric pressure")
                     queue.add("home_electricity_watts",
                               power,
                               source="home",
