@@ -1,6 +1,7 @@
 from __future__ import division
 from datetime import datetime
 import json
+import logging
 import serial
 import time
 import threading
@@ -23,6 +24,15 @@ GECKO_CHART_KEY = "PUT IN SETTINGS"
 from settings import *
 
 librato = librato.connect(LIBRATO_USER, LIBRATO_TOKEN)
+
+
+def init_logging(filename='/mnt/envsrv.log', level=logging.DEBUG):
+    logging.basicConfig(
+        filename=filename,
+        level=level,
+        format='%(levelname): %(asctime)s %(message)s',
+        datefmt='%d/%m/%Y %H:%M:%S',
+        filemode="a")
 
 
 def make_gecko_meter(value, minimum, maximum):
@@ -93,14 +103,14 @@ class PowerAccumulator(threading.Thread):
             try:
                 requests.post(GECKO_URL_ROOT + GECKO_POWER_KEY, meter_content)
             except Exception:
-                pass
+                logging.exception("Error posting to Gecko meter")
             chart_content = make_gecko_line_chart(
                 data=self.history,
                 title="Power consumption")
             try:
                 requests.post(GECKO_URL_ROOT + GECKO_CHART_KEY, chart_content)
             except Exception:
-                pass
+                logging.exception("Error posting to Gecko chart")
 
             # Librato
             try:
@@ -111,7 +121,7 @@ class PowerAccumulator(threading.Thread):
                               description="Domestic electricity consumption")
                     queue.submit()
             except Exception, ex:
-                pass
+                logger.exception("Error posting to librato")
 
 
 power_accumulator = PowerAccumulator(reporting_interval=5, history_points=300)
@@ -140,17 +150,19 @@ def process(v):
         pass
 
 
-DEVICE = "/dev/ttyAMA0"
-ser = serial.Serial(DEVICE, 38400)
-ser.open()
-v = ""
-while 1:
-    ch = ser.read()
-    if ch == "\n":
-        process(v)
-        v = ""
-    elif ch == "\r":
-        pass
-    else:
-        v += ch
-ser.close()
+if __name__ == '__main__':
+    init_logging()
+    DEVICE = "/dev/ttyAMA0"
+    ser = serial.Serial(DEVICE, 38400)
+    ser.open()
+    v = ""
+    while 1:
+        ch = ser.read()
+        if ch == "\n":
+            process(v)
+            v = ""
+        elif ch == "\r":
+            pass
+        else:
+            v += ch
+    ser.close()
