@@ -30,7 +30,7 @@ def init_logging(filename='/mnt/envsrv.log', level=logging.DEBUG):
     logging.basicConfig(
         filename=filename,
         level=level,
-        format='%(levelname): %(asctime)s %(message)s',
+        format='%(levelname)s: %(asctime)s %(message)s',
         datefmt='%d/%m/%Y %H:%M:%S',
         filemode="a")
 
@@ -151,7 +151,7 @@ def process(v):
 
 
 if __name__ == '__main__':
-    init_logging()
+    init_logging(level=logging.WARNING)
     DEVICE = "/dev/ttyAMA0"
     ser = serial.Serial(DEVICE, 38400)
     ser.open()
