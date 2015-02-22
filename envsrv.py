@@ -97,6 +97,7 @@ class PowerAccumulator(threading.Thread):
     def run(self):
         while True:
             power = self.publish_queue.get()
+            logger.info("Publishing power dP={}".format(power))
 
             # Geckoboard
             meter_content = make_gecko_meter(power, 0, 4500)
@@ -151,7 +152,7 @@ def process(v):
 
 
 if __name__ == '__main__':
-    init_logging(level=logging.WARNING)
+    init_logging(level=logging.INFO)
     DEVICE = "/dev/ttyAMA0"
     ser = serial.Serial(DEVICE, 38400)
     ser.open()
