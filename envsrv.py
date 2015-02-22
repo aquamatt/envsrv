@@ -97,7 +97,7 @@ class PowerAccumulator(threading.Thread):
     def run(self):
         while True:
             power = self.publish_queue.get()
-            logger.info("Publishing power dP={}".format(power))
+            logging.info("Publishing power dP={}".format(power))
 
             # Geckoboard
             meter_content = make_gecko_meter(power, 0, 4500)
