@@ -96,33 +96,36 @@ class PowerAccumulator(threading.Thread):
 
     def run(self):
         while True:
-            power = self.publish_queue.get()
-            logging.info("Publishing power dP={}".format(power))
+            try:
+                power = self.publish_queue.get()
+                logging.info("Publishing power dP={}".format(power))
 
-            # Geckoboard
-            meter_content = make_gecko_meter(power, 0, 4500)
-            try:
-                requests.post(GECKO_URL_ROOT + GECKO_POWER_KEY, meter_content)
-            except Exception:
-                logging.exception("Error posting to Gecko meter")
-            chart_content = make_gecko_line_chart(
-                data=self.history,
-                title="Power consumption")
-            try:
-                requests.post(GECKO_URL_ROOT + GECKO_CHART_KEY, chart_content)
-            except Exception:
-                logging.exception("Error posting to Gecko chart")
+                # Geckoboard
+                meter_content = make_gecko_meter(power, 0, 4500)
+                try:
+                    requests.post(GECKO_URL_ROOT + GECKO_POWER_KEY, meter_content)
+                except Exception:
+                    logging.exception("Error posting to Gecko meter")
+                chart_content = make_gecko_line_chart(
+                    data=self.history,
+                    title="Power consumption")
+                try:
+                    requests.post(GECKO_URL_ROOT + GECKO_CHART_KEY, chart_content)
+                except Exception:
+                    logging.exception("Error posting to Gecko chart")
 
-            # Librato
-            try:
-                with librato.new_queue() as queue:
-                    queue.add("home_electricity_watts",
-                              power,
-                              source="home",
-                              description="Domestic electricity consumption")
-                    queue.submit()
+                # Librato
+                try:
+                    with librato.new_queue() as queue:
+                        queue.add("home_electricity_watts",
+                                  power,
+                                  source="home",
+                                  description="Domestic electricity consumption")
+                        queue.submit()
+                except Exception, ex:
+                    logger.exception("Error posting to librato")
             except Exception, ex:
-                logger.exception("Error posting to librato")
+                logger.exception("Unexpected error in bagging area")
 
 
 power_accumulator = PowerAccumulator(reporting_interval=5, history_points=300)
