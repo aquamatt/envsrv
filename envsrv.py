@@ -54,7 +54,7 @@ def make_gecko_number_secondary_stat(value, text=''):
         )
 
     v = json.dumps(dict(api_key=GECKO_API_KEY, data=d))
-    eturn v
+    return v
 
 
 def make_gecko_line_chart(data, title=''):
@@ -95,7 +95,7 @@ class PowerAccumulator(threading.Thread):
             self.publish_queue.put(power)
             qsize = self.publish_queue.qsize()
             if qsize > 2:
-                logging.info("QSize now {}".format(qsize)
+                logging.info("QSize now {}".format(qsize))
 
     def run(self):
         while True:
