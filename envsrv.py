@@ -54,7 +54,7 @@ def make_gecko_number_secondary_stat(value, text=''):
         )
 
     v = json.dumps(dict(api_key=GECKO_API_KEY, data=d))
-    return v
+    eturn v
 
 
 def make_gecko_line_chart(data, title=''):
@@ -93,6 +93,9 @@ class PowerAccumulator(threading.Thread):
             self.history = self.history[-self.history_points:]
 
             self.publish_queue.put(power)
+            qsize = self.publish_queue.qsize()
+            if qsize > 2:
+                logging.info("QSize now {}".format(qsize)
 
     def run(self):
         while True:
@@ -125,7 +128,7 @@ class PowerAccumulator(threading.Thread):
                 except Exception, ex:
                     logger.exception("Error posting to librato")
             except Exception, ex:
-                logger.exception("Unexpected error in bagging area")
+                logging.exception("Unexpected error in bagging area")
 
 
 power_accumulator = PowerAccumulator(reporting_interval=5, history_points=300)
